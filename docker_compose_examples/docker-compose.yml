@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  app:  # Renamed container1 to app to match the service name expected in the socket connection
+    build: .
+    command: ["python3", "app.py", "App", "5001", "5000"]
+    ports:
+      - "8000:5000"  # Port mapping remains changed for external access
+    networks:
+      - app-network
+
+  container2:
+    build: .
+    command: ["python3", "app.py", "Container2", "5000", "5001"]
+    ports:
+      - "8001:5001"  # Port mapping remains changed for external access
+    depends_on:  # Ensure container2 waits for app (formerly container1) to be ready
+      - app
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

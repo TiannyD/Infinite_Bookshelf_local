@@ -1,0 +1,51 @@
+"""
+Python script will act as both a server and a client. 
+It will try to connect to the other container to send a message. 
+If it can't (because the other container hasn't started listening yet), 
+it will start listening for an incoming message first.
+"""
+
+import socket
+import sys
+import time
+
+def communicate(name, target_port, listen_port):
+    message = f"Hello from {name}"
+    goodbye_message = f"Goodbye from {name}"
+    buffer_size = 1024
+
+    # Try to send a message first
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        connected = False
+        for _ in range(5):  # Retry connecting for a few times
+            try:
+                s.connect(("app", target_port))
+                s.sendall(message.encode())
+                connected = True
+                break
+            except ConnectionRefusedError:
+                time.sleep(5)  # Wait a bit for the other service to be up
+
+        if connected:
+            data = s.recv(buffer_size)
+            print(f"{name} received: {data.decode()}")
+            s.sendall(goodbye_message.encode())
+
+    # If sending first didn't work, listen for a message
+    if not connected:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_listen:
+            s_listen.bind(("0.0.0.0", listen_port))
+            s_listen.listen()
+            conn, _ = s_listen.accept()
+            with conn:
+                data = conn.recv(buffer_size)
+                print(f"{name} received: {data.decode()}")
+                conn.sendall(message.encode())
+                data = conn.recv(buffer_size)
+                print(f"{name} received: {data.decode()}")
+
+if __name__ == "__main__":
+    name = sys.argv[1]
+    target_port = int(sys.argv[2])
+    listen_port = int(sys.argv[3])
+    communicate(name, target_port, listen_port)
